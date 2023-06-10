@@ -22,3 +22,35 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    app.redis_read_write_provider:
+        class: Redis
+        autowire: false
+        autoconfigure: false
+        factory: [ 'Symfony\Component\Cache\Adapter\RedisAdapter', 'createConnection' ]
+        arguments:
+            $dsn: 'redis://redis/0'
+
+    app.redis_read_provider:
+        class: Redis
+        autowire: false
+        autoconfigure: false
+        factory: [ 'Symfony\Component\Cache\Adapter\RedisAdapter', 'createConnection' ]
+        arguments:
+            $dsn: 'redis://redis/1'
+
+    app.cache.adapter.redis:
+        class: App\Service\RedisReadWriteAdapter
+        autowire: false
+        autoconfigure: false
+        arguments:
+            - '@app.redis_read_write_provider'
+            - ''
+            - 0
+            - '@?cache.default_marshaller'
+            - '@app.redis_read_provider'
+        calls:
+            -   setLogger: [ '@?logger' ]
+        tags:
+            - { name: cache.pool, provider: app.redis_read_write_provider, clearer: cache.default_clearer, reset: reset }
+            - { name: monolog.logger, channel: cache }
